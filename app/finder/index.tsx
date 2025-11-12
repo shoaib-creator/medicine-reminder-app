@@ -17,7 +17,7 @@ import * as Location from "expo-location";
 import {
   findNearbyMedicine,
   MedicineLocation,
-} from "../../utils/appwriteService";
+} from "../../utils/firebaseService";
 
 export default function MedicineFinderScreen() {
   const router = useRouter();
@@ -189,7 +189,7 @@ export default function MedicineFinderScreen() {
           )}
 
           {results.map((location, index) => (
-            <View key={`${location.clinic.$id}-${index}`} style={styles.resultCard}>
+            <View key={`${location.clinic.id}-${index}`} style={styles.resultCard}>
               <View style={styles.clinicHeader}>
                 <View style={styles.clinicIconContainer}>
                   <Ionicons name="medical" size={24} color="#1a8e2d" />

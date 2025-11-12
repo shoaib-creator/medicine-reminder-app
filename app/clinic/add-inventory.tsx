@@ -12,7 +12,7 @@ import {
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { addInventoryItem } from "../../utils/appwriteService";
+import { addInventoryItem } from "../../utils/firebaseService";
 
 export default function AddInventoryScreen() {
   const router = useRouter();

@@ -5,12 +5,21 @@ import {
   StyleSheet,
   TouchableOpacity,
   Dimensions,
-  Image,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
 } from "react-native";
 import { useRouter } from "expo-router";
-import * as LocalAuthentication from "expo-local-authentication";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
+import { 
+  signUpWithEmail, 
+  signInWithEmail, 
+  useGoogleSignIn, 
+  handleGoogleSignIn,
+  onAuthChange 
+} from "../utils/authService";
 
 const { width } = Dimensions.get("window");
 
@@ -18,47 +27,68 @@ export default function AuthScreen() {
   const router = useRouter();
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [hasBiometrics, setHasBiometrics] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  
+  // Google Sign-In
+  const { request, response, promptAsync } = useGoogleSignIn();
 
   useEffect(() => {
-    checkBiometrics();
+    // Check if user is already authenticated
+    const unsubscribe = onAuthChange((user) => {
+      if (user) {
+        router.replace("/home");
+      }
+    });
+    return unsubscribe;
   }, []);
 
-  const checkBiometrics = async () => {
-    const hasHardware = await LocalAuthentication.hasHardwareAsync();
-    const isEnrolled = await LocalAuthentication.isEnrolledAsync();
-    setHasBiometrics(hasHardware && isEnrolled);
+  useEffect(() => {
+    if (response?.type === "success") {
+      const { id_token } = response.params;
+      handleGoogleAuth(id_token);
+    }
+  }, [response]);
+
+  const handleGoogleAuth = async (idToken: string) => {
+    try {
+      setIsAuthenticating(true);
+      setError(null);
+      await handleGoogleSignIn(idToken);
+      router.replace("/home");
+    } catch (err: any) {
+      setError(err.message || "Google sign-in failed");
+    } finally {
+      setIsAuthenticating(false);
+    }
   };
 
-  const authenticate = async () => {
+  const handleEmailAuth = async () => {
     try {
       setIsAuthenticating(true);
       setError(null);
 
-      // Check if device has biometric hardware
-      const hasHardware = await LocalAuthentication.hasHardwareAsync();
-      const supportedTypes =
-        await LocalAuthentication.supportedAuthenticationTypesAsync();
-      const hasBiometrics = await LocalAuthentication.isEnrolledAsync();
-
-      const auth = await LocalAuthentication.authenticateAsync({
-        promptMessage:
-          hasHardware && hasBiometrics
-            ? "Use Face ID or Touch ID"
-            : "Enter your PIN to access MedRemind",
-        fallbackLabel: "Use PIN",
-        cancelLabel: "Cancel",
-        disableDeviceFallback: false,
-      });
-
-      if (auth.success) {
-        router.replace("/home");
-      } else {
-        setError("Authentication failed. Please try again.");
+      if (!email || !password) {
+        setError("Please fill in all fields");
+        return;
       }
-    } catch (err) {
-      setError("An error occurred. Please try again.");
-      console.error(err);
+
+      if (isSignUp && password !== confirmPassword) {
+        setError("Passwords do not match");
+        return;
+      }
+
+      if (isSignUp) {
+        await signUpWithEmail(email, password);
+      } else {
+        await signInWithEmail(email, password);
+      }
+      
+      router.replace("/home");
+    } catch (err: any) {
+      setError(err.message || "Authentication failed");
     } finally {
       setIsAuthenticating(false);
     }
@@ -66,50 +96,148 @@ export default function AuthScreen() {
 
   return (
     <LinearGradient colors={["#4CAF50", "#2E7D32"]} style={styles.container}>
-      <View style={styles.content}>
-        <View style={styles.iconContainer}>
-          <Ionicons name="medical" size={80} color="white" />
-        </View>
-
-        <Text style={styles.title}>MedRemind</Text>
-        <Text style={styles.subtitle}>Your Personal Medication Assistant</Text>
-
-        <View style={styles.card}>
-          <Text style={styles.welcomeText}>Welcome Back!</Text>
-          <Text style={styles.instructionText}>
-            {hasBiometrics
-              ? "Use Face ID/Touch ID or PIN to access your medications"
-              : "Enter your PIN to access your medications"}
-          </Text>
-
-          <TouchableOpacity
-            style={[styles.button, isAuthenticating && styles.buttonDisabled]}
-            onPress={authenticate}
-            disabled={isAuthenticating}
-          >
-            <Ionicons
-              name={hasBiometrics ? "finger-print-outline" : "keypad-outline"}
-              size={24}
-              color="white"
-              style={styles.buttonIcon}
-            />
-            <Text style={styles.buttonText}>
-              {isAuthenticating
-                ? "Verifying..."
-                : hasBiometrics
-                ? "Authenticate"
-                : "Enter PIN"}
-            </Text>
-          </TouchableOpacity>
-
-          {error && (
-            <View style={styles.errorContainer}>
-              <Ionicons name="alert-circle" size={20} color="#f44336" />
-              <Text style={styles.errorText}>{error}</Text>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.container}
+      >
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.content}>
+            <View style={styles.iconContainer}>
+              <Ionicons name="medical" size={80} color="white" />
             </View>
-          )}
-        </View>
-      </View>
+
+            <Text style={styles.title}>MedRemind</Text>
+            <Text style={styles.subtitle}>Your Personal Medication Assistant</Text>
+
+            <View style={styles.card}>
+              <Text style={styles.welcomeText}>
+                {isSignUp ? "Create Account" : "Welcome Back!"}
+              </Text>
+              <Text style={styles.instructionText}>
+                {isSignUp 
+                  ? "Sign up to start managing your medications" 
+                  : "Sign in to access your medications"}
+              </Text>
+
+              {/* Email Input */}
+              <View style={styles.inputContainer}>
+                <Ionicons name="mail-outline" size={20} color="#666" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Email"
+                  placeholderTextColor="#999"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+
+              {/* Password Input */}
+              <View style={styles.inputContainer}>
+                <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Password"
+                  placeholderTextColor="#999"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry
+                  autoCapitalize="none"
+                />
+              </View>
+
+              {/* Confirm Password (Sign Up Only) */}
+              {isSignUp && (
+                <View style={styles.inputContainer}>
+                  <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Confirm Password"
+                    placeholderTextColor="#999"
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    secureTextEntry
+                    autoCapitalize="none"
+                  />
+                </View>
+              )}
+
+              {/* Email/Password Auth Button */}
+              <TouchableOpacity
+                style={[styles.button, isAuthenticating && styles.buttonDisabled]}
+                onPress={handleEmailAuth}
+                disabled={isAuthenticating}
+              >
+                <Ionicons
+                  name="mail-outline"
+                  size={24}
+                  color="white"
+                  style={styles.buttonIcon}
+                />
+                <Text style={styles.buttonText}>
+                  {isAuthenticating 
+                    ? "Processing..." 
+                    : isSignUp 
+                    ? "Sign Up" 
+                    : "Sign In"}
+                </Text>
+              </TouchableOpacity>
+
+              {/* Divider */}
+              <View style={styles.divider}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>OR</Text>
+                <View style={styles.dividerLine} />
+              </View>
+
+              {/* Google Sign-In Button */}
+              <TouchableOpacity
+                style={[styles.googleButton, isAuthenticating && styles.buttonDisabled]}
+                onPress={() => promptAsync()}
+                disabled={!request || isAuthenticating}
+              >
+                <Ionicons
+                  name="logo-google"
+                  size={24}
+                  color="#DB4437"
+                  style={styles.buttonIcon}
+                />
+                <Text style={styles.googleButtonText}>
+                  Sign in with Google
+                </Text>
+              </TouchableOpacity>
+
+              {/* Toggle Sign Up/Sign In */}
+              <TouchableOpacity
+                style={styles.toggleButton}
+                onPress={() => {
+                  setIsSignUp(!isSignUp);
+                  setError(null);
+                  setConfirmPassword("");
+                }}
+              >
+                <Text style={styles.toggleButtonText}>
+                  {isSignUp 
+                    ? "Already have an account? Sign In" 
+                    : "Don't have an account? Sign Up"}
+                </Text>
+              </TouchableOpacity>
+
+              {error && (
+                <View style={styles.errorContainer}>
+                  <Ionicons name="alert-circle" size={20} color="#f44336" />
+                  <Text style={styles.errorText}>{error}</Text>
+                </View>
+              )}
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </LinearGradient>
   );
 }
@@ -117,6 +245,10 @@ export default function AuthScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: "center",
   },
   content: {
     flex: 1,
@@ -175,6 +307,26 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 30,
   },
+  inputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: "100%",
+    backgroundColor: "#f5f5f5",
+    borderRadius: 12,
+    marginBottom: 15,
+    paddingHorizontal: 15,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+  },
+  inputIcon: {
+    marginRight: 10,
+  },
+  input: {
+    flex: 1,
+    paddingVertical: 15,
+    fontSize: 16,
+    color: "#333",
+  },
   button: {
     backgroundColor: "#4CAF50",
     paddingVertical: 15,
@@ -184,6 +336,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    marginTop: 10,
   },
   buttonDisabled: {
     opacity: 0.7,
@@ -194,6 +347,47 @@ const styles = StyleSheet.create({
   buttonText: {
     color: "white",
     fontSize: 16,
+    fontWeight: "600",
+  },
+  divider: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: "100%",
+    marginVertical: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#e0e0e0",
+  },
+  dividerText: {
+    marginHorizontal: 10,
+    color: "#999",
+    fontSize: 14,
+  },
+  googleButton: {
+    backgroundColor: "white",
+    paddingVertical: 15,
+    paddingHorizontal: 30,
+    borderRadius: 12,
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+  },
+  googleButtonText: {
+    color: "#333",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+  toggleButton: {
+    marginTop: 20,
+  },
+  toggleButtonText: {
+    color: "#4CAF50",
+    fontSize: 14,
     fontWeight: "600",
   },
   errorContainer: {
