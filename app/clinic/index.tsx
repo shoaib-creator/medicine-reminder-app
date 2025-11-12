@@ -18,7 +18,7 @@ import {
   ClinicInventory,
   updateInventoryItem,
   deleteInventoryItem,
-} from "../../utils/appwriteService";
+} from "../../utils/firebaseService";
 
 export default function ClinicManagementScreen() {
   const router = useRouter();
@@ -52,8 +52,8 @@ export default function ClinicManagementScreen() {
 
   const handleUpdateQuantity = async (item: ClinicInventory, newQuantity: number) => {
     try {
-      if (item.$id) {
-        await updateInventoryItem(item.$id, { quantity: newQuantity });
+      if (item.id) {
+        await updateInventoryItem(item.id, { quantity: newQuantity });
         await loadInventory();
       }
     } catch (error) {
@@ -76,8 +76,8 @@ export default function ClinicManagementScreen() {
           style: "destructive",
           onPress: async () => {
             try {
-              if (item.$id) {
-                await deleteInventoryItem(item.$id);
+              if (item.id) {
+                await deleteInventoryItem(item.id);
                 await loadInventory();
               }
             } catch (error) {
@@ -149,7 +149,7 @@ export default function ClinicManagementScreen() {
               const stockStatus = getStockStatus(item.quantity);
 
               return (
-                <View key={item.$id} style={styles.inventoryCard}>
+                <View key={item.id} style={styles.inventoryCard}>
                   <View style={styles.inventoryHeader}>
                     <View style={styles.inventoryInfo}>
                       <Text style={styles.medicineName}>{item.medicineName}</Text>

@@ -27,6 +27,7 @@ import {
   registerForPushNotificationsAsync,
   scheduleMedicationReminder,
 } from "../utils/notifications";
+import { signOutUser } from "../utils/authService";
 
 const { width } = Dimensions.get("window");
 
@@ -257,6 +258,31 @@ export default function HomeScreen() {
     );
   };
 
+  const handleSignOut = async () => {
+    Alert.alert(
+      "Sign Out",
+      "Are you sure you want to sign out?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Sign Out",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await signOutUser();
+              router.replace("/auth");
+            } catch (error) {
+              Alert.alert("Error", "Failed to sign out. Please try again.");
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const progress =
     todaysMedications.length > 0
       ? completedDoses / (todaysMedications.length * 2)
@@ -282,6 +308,12 @@ export default function HomeScreen() {
                   </Text>
                 </View>
               )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.notificationButton}
+              onPress={handleSignOut}
+            >
+              <Ionicons name="log-out-outline" size={24} color="white" />
             </TouchableOpacity>
           </View>
           <CircularProgress
