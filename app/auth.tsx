@@ -20,6 +20,7 @@ import {
   handleGoogleSignIn,
   onAuthChange 
 } from "../utils/authService";
+import { saveUserProfile, getUserProfile, UserRole } from "../utils/userService";
 
 const { width } = Dimensions.get("window");
 
@@ -31,15 +32,27 @@ export default function AuthScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [selectedRole, setSelectedRole] = useState<UserRole>("patient");
   
   // Google Sign-In
   const { request, response, promptAsync } = useGoogleSignIn();
 
   useEffect(() => {
     // Check if user is already authenticated
-    const unsubscribe = onAuthChange((user) => {
+    const unsubscribe = onAuthChange(async (user) => {
       if (user) {
-        router.replace("/home");
+        // Get user profile to determine navigation
+        const profile = await getUserProfile(user.uid);
+        if (profile) {
+          if (profile.role === "clinic") {
+            router.replace("/clinic-home");
+          } else {
+            router.replace("/home");
+          }
+        } else {
+          // If no profile exists, redirect to home (default patient view)
+          router.replace("/home");
+        }
       }
     });
     return unsubscribe;
@@ -56,8 +69,25 @@ export default function AuthScreen() {
     try {
       setIsAuthenticating(true);
       setError(null);
-      await handleGoogleSignIn(idToken);
-      router.replace("/home");
+      const user = await handleGoogleSignIn(idToken);
+      
+      if (user) {
+        // Check if user profile exists
+        const profile = await getUserProfile(user.uid);
+        
+        if (!profile) {
+          // New user - save profile with selected role
+          await saveUserProfile(user.uid, user.email || "", selectedRole, user.displayName || undefined);
+        }
+        
+        // Navigate based on role
+        const finalProfile = profile || { role: selectedRole };
+        if (finalProfile.role === "clinic") {
+          router.replace("/clinic-home");
+        } else {
+          router.replace("/home");
+        }
+      }
     } catch (err: any) {
       setError(err.message || "Google sign-in failed");
     } finally {
@@ -80,13 +110,22 @@ export default function AuthScreen() {
         return;
       }
 
+      let user;
       if (isSignUp) {
-        await signUpWithEmail(email, password);
+        user = await signUpWithEmail(email, password);
+        // Save user profile with selected role
+        await saveUserProfile(user.uid, user.email || "", selectedRole);
       } else {
-        await signInWithEmail(email, password);
+        user = await signInWithEmail(email, password);
       }
       
-      router.replace("/home");
+      // Get user profile to determine navigation
+      const profile = await getUserProfile(user.uid);
+      if (profile && profile.role === "clinic") {
+        router.replace("/clinic-home");
+      } else {
+        router.replace("/home");
+      }
     } catch (err: any) {
       setError(err.message || "Authentication failed");
     } finally {
@@ -121,6 +160,57 @@ export default function AuthScreen() {
                   ? "Sign up to start managing your medications" 
                   : "Sign in to access your medications"}
               </Text>
+
+              {/* Role Selection (Sign Up Only) */}
+              {isSignUp && (
+                <View style={styles.roleContainer}>
+                  <Text style={styles.roleLabel}>I am a:</Text>
+                  <View style={styles.roleToggleContainer}>
+                    <TouchableOpacity
+                      style={[
+                        styles.roleButton,
+                        selectedRole === "patient" && styles.roleButtonActive,
+                      ]}
+                      onPress={() => setSelectedRole("patient")}
+                    >
+                      <Ionicons
+                        name="person-outline"
+                        size={24}
+                        color={selectedRole === "patient" ? "#4CAF50" : "#666"}
+                      />
+                      <Text
+                        style={[
+                          styles.roleButtonText,
+                          selectedRole === "patient" && styles.roleButtonTextActive,
+                        ]}
+                      >
+                        Patient
+                      </Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[
+                        styles.roleButton,
+                        selectedRole === "clinic" && styles.roleButtonActive,
+                      ]}
+                      onPress={() => setSelectedRole("clinic")}
+                    >
+                      <Ionicons
+                        name="business-outline"
+                        size={24}
+                        color={selectedRole === "clinic" ? "#4CAF50" : "#666"}
+                      />
+                      <Text
+                        style={[
+                          styles.roleButtonText,
+                          selectedRole === "clinic" && styles.roleButtonTextActive,
+                        ]}
+                      >
+                        Clinic
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
 
               {/* Email Input */}
               <View style={styles.inputContainer}>
@@ -402,5 +492,44 @@ const styles = StyleSheet.create({
     color: "#f44336",
     marginLeft: 8,
     fontSize: 14,
+  },
+  roleContainer: {
+    width: "100%",
+    marginBottom: 20,
+  },
+  roleLabel: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333",
+    marginBottom: 12,
+    textAlign: "center",
+  },
+  roleToggleContainer: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  roleButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#f5f5f5",
+    borderRadius: 12,
+    padding: 15,
+    borderWidth: 2,
+    borderColor: "#e0e0e0",
+  },
+  roleButtonActive: {
+    backgroundColor: "#E8F5E9",
+    borderColor: "#4CAF50",
+  },
+  roleButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#666",
+  },
+  roleButtonTextActive: {
+    color: "#4CAF50",
   },
 });

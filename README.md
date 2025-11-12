@@ -21,7 +21,7 @@ A comprehensive medicine reminder and clinic finder application built with Expo 
 ## Technology Stack
 
 - **Frontend**: React Native with Expo
-- **Backend**: Appwrite (cloud-based backend service)
+- **Backend**: Firebase (Authentication & Firestore)
 - **Navigation**: Expo Router
 - **Maps**: React Native Maps & Expo Location
 - **Notifications**: Expo Notifications
@@ -35,7 +35,7 @@ A comprehensive medicine reminder and clinic finder application built with Expo 
    yarn install
    ```
 
-2. Set up Appwrite backend (see [APPWRITE_SETUP.md](./APPWRITE_SETUP.md))
+2. Set up Firebase (see Firebase Setup section below)
 
 3. Start the app
 
@@ -53,7 +53,52 @@ In the output, you'll find options to open the app in a
 ## Documentation
 
 - [User Guide](./USER_GUIDE.md) - Comprehensive guide for patients and clinics
-- [Appwrite Setup](./APPWRITE_SETUP.md) - Backend configuration instructions
+
+## Firebase Setup
+
+### 1. Create a Firebase Project
+
+1. Go to [Firebase Console](https://console.firebase.google.com/)
+2. Create a new project named "medicine-reminder"
+3. Enable Google Analytics (optional)
+
+### 2. Enable Authentication
+
+1. Navigate to Authentication in the Firebase console
+2. Enable Email/Password authentication
+3. Enable Google Sign-In
+4. Add your app's SHA-1 certificate fingerprint for Android
+
+### 3. Create Firestore Database
+
+1. Navigate to Firestore Database
+2. Create a new database in production mode
+3. Set up the following collections:
+   - `users` - User profiles with roles
+   - `clinics` - Clinic information
+   - `clinicInventory` - Medicine inventory for clinics
+
+### 4. Update Firebase Configuration
+
+Update the Firebase configuration in `config/firebase.ts` with your project credentials:
+
+```typescript
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+  appId: "YOUR_APP_ID",
+  measurementId: "YOUR_MEASUREMENT_ID"
+};
+```
+
+### 5. Configure Google Sign-In
+
+1. Download `google-services.json` for Android
+2. Download `GoogleService-Info.plist` for iOS
+3. Update the Google Client ID in `utils/authService.ts`
 
 ## Project Structure
 
@@ -64,15 +109,19 @@ In the output, you'll find options to open the app in a
 │   ├── finder/            # Medicine finder feature
 │   ├── history/           # Medication history
 │   ├── medications/       # Add/edit medications
-│   └── refills/           # Refill tracking
+│   ├── refills/           # Refill tracking
+│   ├── clinic-home.tsx    # Clinic user home screen
+│   └── home.tsx           # Patient user home screen
 ├── components/            # Reusable components
 ├── config/                # Configuration files
-│   └── appwrite.ts       # Appwrite backend config
+│   └── firebase.ts        # Firebase configuration
 ├── utils/                 # Utility functions
-│   ├── appwriteService.ts # Appwrite service layer
+│   ├── authService.ts     # Firebase authentication
+│   ├── firebaseService.ts # Firebase Firestore services
+│   ├── userService.ts     # User profile management
 │   ├── notifications.ts   # Push notifications
-│   └── storage.ts        # Local storage
-└── assets/               # Images and static files
+│   └── storage.ts         # Local storage
+└── assets/                # Images and static files
 ```
 
 ## Key Features Implementation
@@ -81,7 +130,7 @@ In the output, you'll find options to open the app in a
 Patients can search for medicines by name and find nearby clinics that have them in stock. The feature uses:
 - Expo Location for GPS coordinates
 - Haversine formula for distance calculation
-- Real-time inventory data from Appwrite
+- Real-time inventory data from Firebase Firestore
 - Sorted results by distance
 
 ### Clinic Inventory
@@ -104,7 +153,7 @@ To learn more about developing this project with Expo:
 
 - [Expo documentation](https://docs.expo.dev/)
 - [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/)
-- [Appwrite documentation](https://appwrite.io/docs)
+- [Firebase documentation](https://firebase.google.com/docs)
 
 ## Join the community
 
