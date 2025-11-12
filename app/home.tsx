@@ -42,6 +42,20 @@ const QUICK_ACTIONS = [
     gradient: ["#4CAF50", "#2E7D32"] as [string, string],
   },
   {
+    icon: "search-outline" as const,
+    label: "Find\nMedicine",
+    route: "/finder" as const,
+    color: "#7B1FA2",
+    gradient: ["#9C27B0", "#7B1FA2"] as [string, string],
+  },
+  {
+    icon: "business-outline" as const,
+    label: "Clinic\nInventory",
+    route: "/clinic" as const,
+    color: "#F57C00",
+    gradient: ["#FF9800", "#F57C00"] as [string, string],
+  },
+  {
     icon: "calendar-outline" as const,
     label: "Calendar\nView",
     route: "/calendar" as const,

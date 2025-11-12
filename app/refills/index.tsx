@@ -196,6 +196,18 @@ export default function RefillTrackerScreen() {
                     </View>
                   </View>
 
+                  {supplyPercentage <= medication.refillAt && (
+                    <TouchableOpacity
+                      style={styles.findMedicineButton}
+                      onPress={() => router.push("/finder")}
+                    >
+                      <Ionicons name="search" size={20} color="#9C27B0" />
+                      <Text style={styles.findMedicineButtonText}>
+                        Find Nearby
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+
                   <TouchableOpacity
                     style={[
                       styles.refillButton,
@@ -382,6 +394,21 @@ const styles = StyleSheet.create({
     color: "#666",
     marginTop: 10,
     marginBottom: 20,
+  },
+  findMedicineButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#F3E5F5",
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginBottom: 12,
+    gap: 8,
+  },
+  findMedicineButtonText: {
+    color: "#9C27B0",
+    fontSize: 16,
+    fontWeight: "600",
   },
   addButton: {
     backgroundColor: "#1a8e2d",
